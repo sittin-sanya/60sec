@@ -81,7 +81,14 @@
   }
   .game-card.punish { background: #fdf0f0; border-color: #f3c6c9; }
   .timer { font-size: 22px; font-weight: 700; color: var(--teal-dark); }
-  .timer.low { color: var(--red); }
+  .timer.low { color: var(--red); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.18); } }
+  .game-card { position: relative; }
+  .game-card.pop { animation: pop .35s ease; }
+  @keyframes pop { 0% { transform: scale(.85) rotate(-2deg); opacity: .3; } 60% { transform: scale(1.04) rotate(1deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  .confetti { position: absolute; top: 45%; font-size: 22px; pointer-events: none; z-index: 5; animation: burst 1.4s ease-out forwards; }
+  @keyframes burst { 0% { transform: translate(0, 0) scale(.5); opacity: 1; } 100% { transform: translate(var(--dx), -170px) scale(1.35) rotate(40deg); opacity: 0; } }
+  .mute-btn { position: fixed; top: 12px; left: 12px; width: auto; min-height: 38px; padding: 6px 12px; border-radius: 20px; z-index: 50; margin: 0; background: #fff; }
   .card-cat { color: var(--ink2); font-size: 14px; }
   .card-text { font-size: 20px; line-height: 1.7; font-weight: 600; }
   .card-text.empty { color: var(--ink2); font-weight: 400; }
@@ -101,6 +108,7 @@
 </head>
 <body>
 <div class="wrap">
+  <button id="muteBtn" class="mute-btn" title="الصوت شغال/مكتوم">🔊</button>
   <header>
     <h1>٦٠ ثانية</h1>
     <div class="counts" id="counts"></div>
@@ -185,6 +193,63 @@ let deadline = null;
 let confirmReset = false;
 
 const $ = id => document.getElementById(id);
+
+// ===== sounds + interactivity (Web Audio, no files) =====
+let audioCtx = null;
+let muted = load('qa3da-muted', false);
+let lastLeft = null;
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, start, dur, type, vol, slideTo) {
+  const ctx = ac();
+  const t0 = ctx.currentTime + start;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol || 0.18, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.05);
+}
+function sfx(name) {
+  if (muted) return;
+  try {
+    if (name === 'draw') tone(320, 0, 0.14, 'triangle', 0.16, 880);
+    else if (name === 'answer') { tone(523, 0, 0.12, 'sine', 0.2); tone(659, 0.1, 0.12, 'sine', 0.2); tone(784, 0.2, 0.24, 'sine', 0.2); }
+    else if (name === 'punish') { tone(230, 0, 0.25, 'sawtooth', 0.1, 110); tone(180, 0.24, 0.35, 'sawtooth', 0.1, 85); }
+    else if (name === 'tick') tone(1250, 0, 0.05, 'square', 0.05);
+    else if (name === 'bell') { for (let i = 0; i < 3; i++) { tone(880, i * 0.28, 0.2, 'triangle', 0.22, 620); tone(1318, i * 0.28, 0.14, 'sine', 0.1); } }
+    else if (name === 'add') tone(500, 0, 0.09, 'triangle', 0.12, 720);
+  } catch (e) {}
+}
+function confetti() {
+  const emojis = ['🎉', '⭐', '✨', '🎊', '👏'];
+  for (let i = 0; i < 22; i++) {
+    const sp = document.createElement('span');
+    sp.className = 'confetti';
+    sp.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    sp.style.left = (15 + Math.random() * 70) + '%';
+    sp.style.setProperty('--dx', (Math.random() * 240 - 120) + 'px');
+    sp.style.animationDelay = (Math.random() * 0.15) + 's';
+    $('gameCard').appendChild(sp);
+    setTimeout(() => sp.remove(), 1800);
+  }
+}
+function popCard() {
+  const c = $('gameCard');
+  c.classList.remove('pop');
+  void c.offsetWidth;
+  c.classList.add('pop');
+}
+function renderMute() { $('muteBtn').textContent = muted ? '🔇' : '🔊'; }
 
 function allKeys(cat) {
   let base;
@@ -285,7 +350,7 @@ function renderCard() {
   $('punishBtn').style.display = (!cp || !current) ? '' : 'none';
 }
 
-function draw(cat) {
+function draw(cat, sound) {
   const keys = allKeys(cat);
   const hadDeck = decks[cat] !== undefined;
   let remaining = (decks[cat] || []).filter(k => keys.some(x => x.key === k));
@@ -301,8 +366,11 @@ function draw(cat) {
   const card = keys.find(x => x.key === key);
   current = { cat, key, text: card.text, reshuffled };
   deadline = Date.now() + TIMER_SECONDS * 1000;
+  lastLeft = null;
   renderCard();
   renderRemaining();
+  if (sound !== null) sfx(sound || (cat === PUNISH ? 'punish' : 'draw'));
+  popCard();
 }
 
 function nextCard() {
@@ -318,7 +386,9 @@ function answered() {
   save('qa3da-players', players);
   save('qa3da-turn', turnIdx);
   renderPlayers();
-  draw(selected);
+  sfx('answer');
+  confetti();
+  draw(selected, null);
 }
 
 function addPlayer() {
@@ -327,6 +397,7 @@ function addPlayer() {
   players.push({ id: `${Date.now()}-${Math.floor(Math.random() * 100000)}`, name, points: 0 });
   save('qa3da-players', players);
   $('playerName').value = '';
+  sfx('add');
   renderPlayers();
   renderCard();
 }
@@ -370,7 +441,7 @@ function addCustom() {
   $('customText').value = '';
   renderCustoms();
   renderRemaining();
-  updateCounts();
+  updateCounts();  sfx('add');
 }
 
 function removeCustom(id) {
@@ -415,6 +486,7 @@ $('newCardBtn').onclick = nextCard;
 $('punishBtn').onclick = () => draw(PUNISH);
 $('answeredBtn').onclick = answered;
 $('refusedBtn').onclick = () => draw(PUNISH);
+$('muteBtn').onclick = () => { muted = !muted; save('qa3da-muted', muted); renderMute(); };
 
 setInterval(() => {
   if (deadline === null || !current) return;
@@ -427,9 +499,15 @@ setInterval(() => {
   }
   t.textContent = left > 0 ? `⏱️ ${arNum(left)}` : '⏰ خلص الوقت!';
   t.classList.toggle('low', left <= 10);
+  if (left !== lastLeft) {
+    if (left <= 5 && left >= 1) sfx('tick');
+    if (left === 0 && lastLeft !== null && lastLeft > 0) sfx('bell');
+    lastLeft = left;
+  }
 }, 500);
 
 updateCounts();
+renderMute();
 renderCategories();
 renderPlayers();
 renderCustoms();
