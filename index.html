@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>٦٠ ثانية — لعبة كروت القاعدة</title>
+<meta name="description" content="لعبة كروت تفتح مواضيع مع الصحاب في القاعدة: أسئلة جريئة، مين فينا، تحديات، وعقوبات.">
+<style>
+  :root {
+    --bg: #f4efec;
+    --card: #ffffff;
+    --ink: #251f21;
+    --ink2: #585254;
+    --line: #eae9ea;
+    --teal: #73a89a;
+    --teal-dark: #4f7d70;
+    --red: #ed313e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  header { text-align: center; padding: 24px 8px 8px; }
+  header h1 { font-size: 28px; margin-bottom: 6px; }
+  header .counts { color: var(--ink2); font-size: 14px; margin-bottom: 8px; }
+  header p { color: var(--ink2); font-size: 14px; line-height: 1.8; }
+  section {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px 16px;
+    margin: 16px 0;
+    box-shadow: 0 2px 12px rgba(0,0,0,.05);
+  }
+  section h2 { font-size: 19px; margin-bottom: 6px; }
+  section .hint { color: var(--ink2); font-size: 13px; line-height: 1.8; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 11px 18px;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  button:active { transform: scale(.97); }
+  button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  button.teal { background: var(--teal-dark); color: #fff; border-color: var(--teal-dark); }
+  button.ghost { background: none; border-color: var(--line); color: var(--ink2); }
+  button.selected { background: var(--teal); color: #fff; border-color: var(--teal); }
+  input[type=text] {
+    font-family: inherit;
+    font-size: 15px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin: 8px 0;
+  }
+  .turn { color: var(--ink2); font-size: 15px; margin: 12px 0 4px; }
+  .turn strong { color: var(--ink); }
+  .game-card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 26px 18px;
+    margin: 12px 0;
+    text-align: center;
+    background: var(--bg);
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+  .game-card.punish { background: #fdf0f0; border-color: #f3c6c9; }
+  .timer { font-size: 22px; font-weight: 700; color: var(--teal-dark); }
+  .timer.low { color: var(--red); }
+  .card-cat { color: var(--ink2); font-size: 14px; }
+  .card-text { font-size: 20px; line-height: 1.7; font-weight: 600; }
+  .card-text.empty { color: var(--ink2); font-weight: 400; }
+  .card-note { color: var(--ink2); font-size: 13px; }
+  ul.list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  ul.list li {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  }
+  ul.list li.current { border-color: var(--teal); background: #f2f7f5; }
+  .li-cat { color: var(--ink2); font-size: 12px; white-space: nowrap; }
+  .li-text { flex: 1 1 160px; font-size: 14px; }
+  .li-points { color: var(--teal-dark); font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .del { border: none; background: none; color: var(--red); font-size: 13px; cursor: pointer; padding: 8px; min-height: 32px; }
+  footer { text-align: center; color: var(--ink2); font-size: 12px; padding: 16px 8px 32px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>٦٠ ثانية</h1>
+    <div class="counts" id="counts"></div>
+    <p>لعبة تفتح مواضيع مع الصحاب في القاعدة: سجلوا أسماءكم، واللعبة هتحدد الدور على مين وتحسب النقاط، وكل كارت ليه دقيقة بس يجاوب فيها. اللي ميجاوبش عليه عقاب.</p>
+  </header>
+
+  <section>
+    <h2>سجلوا أسماءكم</h2>
+    <p class="hint">اكتب اسم كل واحد في القاعدة، واللعبة هتدير الأدوار بالترتيب وتحسب النقاط. ممكن تلعبوا من غير أسماء برضه، بس من غير نقاط.</p>
+    <input type="text" id="playerName" placeholder="اسم اللاعب">
+    <div class="row"><button class="teal" id="addPlayerBtn">➕ ضيف اللاعب</button></div>
+    <ul class="list" id="playersList"></ul>
+    <div class="row" id="resetRow" style="display:none"><button class="ghost" id="resetBtn">🧹 صفّر النقاط</button></div>
+  </section>
+
+  <section>
+    <h2>اختار قسم واسحب كارت</h2>
+    <div class="row" id="catRow"></div>
+    <div class="turn" id="turnLine" style="display:none"></div>
+    <div class="game-card" id="gameCard">
+      <div class="card-cat" id="cardCat"></div>
+      <div class="card-text empty" id="cardText">دوس «كارت جديد» وابدأ 👇</div>
+      <div class="card-note" id="cardNote"></div>
+    </div>
+    <div class="row" id="answerRow" style="display:none">
+      <button class="primary" id="answeredBtn"></button>
+      <button id="refusedBtn">مجاوبش؟ يبقى عقاب 😈</button>
+    </div>
+    <p class="hint" id="punishNote" style="display:none"></p>
+    <div class="row">
+      <button class="primary" id="newCardBtn">🎴 كارت جديد</button>
+      <button id="punishBtn">😈 عقاب</button>
+    </div>
+    <p class="hint" id="remainingLine"></p>
+  </section>
+
+  <section>
+    <h2>ضيف كروت من عندك</h2>
+    <p class="hint">عندك سؤال أو تحدي أو عقاب من جوة القاعدة؟ ضيفه وهيدخل في الخلطة مع باقي الكروت.</p>
+    <div class="row" id="addCatRow"></div>
+    <input type="text" id="customText" placeholder="الكارت الجديد">
+    <div class="row"><button class="teal" id="addCustomBtn">➕ ضيف الكارت</button></div>
+    <ul class="list" id="customList"></ul>
+  </section>
+
+  <footer>الأسماء والنقاط والكروت اللي بتضيفها بتتحفظ على الجهاز ده بس.<br>مفيش حاجة بتتبعت أو بتتسجل على أي سيرفر.</footer>
+</div>
+
+<script id="gamedata" type="application/json">{"categories":[{"id":"garee2a","label":"أسئلة جريئة","emoji":"🔥","description":"أسئلة محتاجة شجاعة في الإجابة","cards":["إيه أكتر حاجة بتخاف تعترف بيها؟","مين آخر واحد بعتلّه رسالة وندمت عليها؟","إيه أكبر كدبة قلتها لأهلك واتصدقت؟","لو عمرك ما هتتحاسب، إيه أول حاجة هتعملها؟","مين الشخص اللي بتحبه بس مش بتقوله؟","إيه أكتر حاجة غبية عملتها عشان واحد/واحدة عجبوك؟","لو موبايلك اتفتح قدام الكل دلوقتي، إيه أول حاجة هتتوتر منها؟","إيه الحاجة اللي عملتها ولحد دلوقتي محدش يعرف عنها؟","مين في القاعدة دي ممكن تثق فيه بسر كبير؟ وليه؟","إيه أكتر حاجة بتغير منها على صحابك؟","لو رجع بيك الزمن، إيه القرار اللي مش هتاخده تاني؟","إيه أسوأ معاد خرجت فيه مع حد؟","إيه الحاجة اللي بتعملها في السر ومحدش يتخيلها عنك؟","مين أكتر واحد خذلتك في حياتك؟","إيه أكتر رسالة نفسك تمسحها من عند الناس؟","لو لازم تعترف بعيب فيك قدام الكل، هتقول إيه؟","إيه أكتر حاجة بتحس إنك ضعيف قدامها؟","مين الشخص اللي قطعت علاقتك بيه وبتفتكره لحد دلوقتي؟","إيه أكتر موقف محرج حصلك قدام ناس كتير؟","لو صحابك عرفوا كل حاجة عنك، إيه اللي ممكن يغير نظرتهم ليك؟","إيه الحاجة اللي بتكدب فيها أكتر حاجة؟","مين آخر واحد عملتلّه بلوك أو ميوت؟ وليه؟","إيه أكتر حاجة بتتمنى تعملها بس خايف من رد فعل الناس؟","لو حد قرا أفكارك يوم كامل، هتتوتر من إيه؟","إيه أكبر غلطة عملتها في صداقة؟","مين الواحد اللي بتحقد عليه شوية؟","إيه أكتر حاجة بتزعلك بس بتتظاهر إنها عادية؟","لو ليك رسالة واحدة توصل لشخص من ماضيك، هتقول إيه ولمين؟","إيه الحاجة اللي حسدت عليها واحد من صحابك؟","مين في القاعدة دي شايف إنه بيمثل علينا أحيانًا؟","إيه أكتر قرار اندمجت فيه وانت مش مقتنع؟","إيه أكتر مكان بتروحه عشان تهرب من الناس؟","لو في حد هنا عايز تقوله حاجة في وشه من زمان، إيه هي؟","إيه أكتر عادة وحشة فيك وعارف إنها وحشة؟","مين الشخص اللي بتحكي معاه أكتر من اللازم؟ (اعترف)","إيه أكتر حاجة بتحلم بيها ومش بتقولها لحد؟","لو ليك يوم واحد تعيشه حيات حد تاني، حيات مين؟","إيه أكتر حاجة بتتكسف تطلبها من صحابك؟","مين الواحد اللي لو اتصل بيك دلوقتي هترد فورًا مهما كان؟","إيه أكتر سر بتخاف يطلع؟","إيه الحاجة اللي عملتها عشان تبين كويس قدام حد؟","لو صحبتنا دي فيها واحد بيضايقك، مين هو؟ (اختار واحد من هنا)","إيه أكتر حاجة بتتمنى تتغير فيك؟","مين أول واحد بتحكيله لما بتحصلك حاجة كويسة؟","إيه أكبر فرصة ضيعتها وبتندم عليها؟","لو حد عرض عليك مليون جنيه مقابل إنك تقطع مع واحد من اللي قاعدين، هتعملها؟","إيه أكتر حاجة بتعملها لوحدك ومحدش يعرف؟","مين الشخص اللي بتحلم تقابله يوم من الأيام؟","إيه أكتر موقف بكيت فيه قدام ناس؟","لو ليك تسأل حد في القاعدة أي سؤال وهو مجبر يجاوب بصراحة، هتسأل مين وإيه؟"]},{"id":"meenfeena","label":"مين فينا","emoji":"👉","description":"الكل يشاور على واحد في القاعدة","cards":["مين فينا أكتر واحد بيتأخر عن المعاد؟","مين فينا أكتر واحد بياكل أكل غريب؟","مين فينا أول واحد هيتجوز؟","مين فينا أكتر واحد بيصرف فلوس على حاجات ملهاش لازمة؟","مين فينا أكتر واحد بيضحك في أوقات غلط؟","مين فينا أكتر واحد بيحب الدراما؟","مين فينا أكتر واحد هيبقى مشهور؟","مين فينا أكتر واحد بيتكلم في التليفون بصوت عالي؟","مين فينا أكتر واحد ممكن يعيش من غير موبايل يوم كامل؟","مين فينا أكتر واحد بيكدب كدبات بيضا؟","مين فينا أكتر واحد بيقع في مواقف محرجة؟","مين فينا أكتر واحد بينام في أي حتة؟","مين فينا أكتر واحد بيطلب أكل وهو مش جعان؟","مين فينا أكتر واحد هيبقى غني؟","مين فينا أكتر واحد بيخاف من حاجة غريبة؟","مين فينا أكتر واحد بيحب يتصور؟","مين فينا أكتر واحد بيفتكر معاد النوم؟","مين فينا أكتر واحد بياخد رأي الناس في كل حاجة؟","مين فينا أكتر واحد ممكن يعمل مغامرة مجنونة؟","مين فينا أكتر واحد بيحب المفاجآت؟","مين فينا أكتر واحد بيغني وهو لوحده؟","مين فينا أكتر واحد بيتأثر بالأفلام والمسلسلات؟","مين فينا أكتر واحد هيفتكر صحابه بعد سنين؟","مين فينا أكتر واحد بيحب يسافر؟","مين فينا أكتر واحد بياكل أكل صحابه من غير ما ياخد إذن؟","مين فينا أكتر واحد بيضيع حاجاته؟","مين فينا أكتر واحد بيحب الجدال لحد الآخر؟","مين فينا أكتر واحد ممكن يعيش في الغابة أسبوع؟","مين فينا أكتر واحد بيفرح بسرعة ويتنرفز بسرعة؟","مين فينا أكتر واحد بيحب الأطفال؟","مين فينا أكتر واحد هيبقى مدرس كويس؟","مين فينا أكتر واحد بيحب الحيوانات؟","مين فينا أكتر واحد بيضحك على نكت نفسه؟","مين فينا أكتر واحد بيحب الشتا أكتر من الصيف؟","مين فينا أكتر واحد ممكن ينسى عيد ميلاد صاحبه؟","مين فينا أكتر واحد بيتكلم وهو نايم؟","مين فينا أكتر واحد بيحب القهوة أكتر من أي حاجة؟","مين فينا أكتر واحد بيعرف يطبخ؟","مين فينا أكتر واحد بيختار أحسن أماكن للخروج؟","مين فينا أكتر واحد بيسمع نفس الأغنية مية مرة؟","مين فينا أكتر واحد بيحب يشتري هدايا؟","مين فينا أكتر واحد ممكن يبكي من فيلم كرتون؟","مين فينا أكتر واحد بيحب المغامرات الأكلية الغريبة؟","مين فينا أكتر واحد بيعرف أسرار الكل؟","مين فينا أكتر واحد بيحل مشاكل صحابه؟","مين فينا أكتر واحد بيضحك من قلبه؟","مين فينا أكتر واحد هيبقى أب/أم صارمة؟","مين فينا أكتر واحد بيحب الروتين؟","مين فينا أكتر واحد بيغير رأيه في آخر لحظة؟","مين فينا أكتر واحد بيحب الحفلات؟"]},{"id":"tahaddyat","label":"تحديات مضحكة","emoji":"😂","description":"تحديات خفيفة تعملها قدام الكل","cards":["قلد واحد من اللي قاعدين لحد ما يعرف نفسه.","اتكلم بلكنة صعيدي دقيقة كاملة.","اعمل إعلان تلفزيوني عن كوباية الشاي اللي قدامك.","ارقص ٣٠ ثانية من غير مزيكا.","غني أغنية بصوت أوبرالي.","اتكلم من غير ما تستخدم حرف الميم لمدة دقيقة.","اعمل ٥ ضغطات دلوقتي.","قلد صوت ٣ حيوانات والكل يخمنهم.","احكي نكتة وحشة جدًا ومتضحكش عليها.","امشي في الأوضة كأنك موديل في عرض أزياء.","اتكلم بسرعة جدًا عن يومك في ٢٠ ثانية.","اعمل وجه زعلان لمدة دقيقة من غير ما تضحك.","قلد مذيع نشرة أخبار وهو بيقول أخبار القاعدة دي.","كل حاجة من غير إيدك (اختار حاجة سهلة).","اعمل تمثيلية صامتة عن فيلم والكل يخمنه.","اتكلم مع الكرسي كأنه صاحبك القديم.","اقف على رجل واحدة وهات رقم من ١٠ لحد ١.","قلد واحد مشهور والكل يخمن مين هو.","احكي قصة حصلت لك بس بالإنجليزي الكسر.","اعمل حركة كاراتيه وقول اسمها بجدية.","اشرب كوباية مياه في ٥ ثواني.","اتكلم بصوت واطي جدًا لحد ما حد يقولك ارفع صوتك.","اعمل بورتريه لواحد من القاعدة في ٣٠ ثانية.","قلد موظف استقبال في فندق ٥ نجوم.","امشي للحيطة وارجع وانت ماشي ورا.","احكي آخر حلم حلمته كأنه قصة رعب.","اعمل نفسك بتلعب في ماتش كورة وهدف في الدقيقة ٩٠.","غني أغنية أطفال بصوت رجل عجوز.","اتكلم من غير ما تبطّل ضحك لمدة ٣٠ ثانية.","اعمل إيفيه رقص من التسعينات.","قلد واحد بيبيع في الميكروباص.","احكي عن أول يوم جامعة/مدرسة في ٣ جمل بس.","اعمل مسابقة سرعة في عد الفول مع نفسك.","قلد صوت إعلان مياه غازية.","امثّل إنك بتتفرج على ماتش وفريقك ضيع جون.","اتكلم بلغة إشارة مع واحد من القاعدة دقيقة كاملة.","اعمل تحية عسكرية لكل واحد في القاعدة باسمه.","قلد شخصية كرتون والكل يخمنها.","احكي موقف محرج حصل لحد من صحابك (بإذنه).","اعمل نفسك بتجري في المكان وهات رقم من ٢٠."]},{"id":"ta3arof","label":"تعارف وذكريات","emoji":"💭","description":"أسئلة تقربكم من بعض أكتر","cards":["إيه أحلى ذكرى جمعتك باللي قاعدين دول؟","إيه أول انطباع خدته عني لما شفتني أول مرة؟","إيه الحاجة اللي لو عرفتها عني هتتفاجئ؟","إيه أكتر أكلة بتفتكر بيها بيتكم؟","لو حياتك فيلم، هيكون اسمه إيه؟","إيه الحاجة اللي اتعلمتها من أهلك ومش هتنساها؟","إيه أول حاجة بتعملها أول ما تصحى؟","إيه المكان اللي بتحس فيه بالراحة الحقيقية؟","إيه الهدية اللي فرحت بيها أكتر حاجة في حياتك؟","مين المدرس/الشخص اللي أثر فيك وانت صغير؟","إيه الحاجة اللي كنت بتحلم تبقاها وانت صغير؟","إيه أكتر يوم مميز في حياتك لحد دلوقتي؟","إيه العادة الصباحية اللي مبتقدرش تستغنى عنها؟","لو تقدر تسافر أي حتة في العالم بكرة، هتروح فين؟","إيه الأغنية اللي بتفتكرك بفترة معينة في حياتك؟","إيه أكتر موقف ضحكت فيه من قلبك معانا؟","إيه الحاجة اللي بتتمنى تتعلمها؟","إيه أفضل نصيحة حد قالهالك؟","إيه الشغلانة اللي لو فلوسها كويسة هتشتغلها فورًا؟","إيه أكتر حاجة بتحبها في شخصيتك؟","إيه الفيلم أو المسلسل اللي ممكن تتفرج عليه مية مرة؟","إيه أجمل خروجة عملناها مع بعض؟","لو معاك يوم إجازة كامل من غير أي التزامات، هتعمل إيه؟","إيه الحاجة اللي بتفتخر إنك عملتها السنة دي؟","مين أول صاحب عملته في حياتك؟ ولسه بتكلمه؟","إيه أكتر قرار صح أخدته في حياتك؟","إيه الحاجة اللي بتهدي أعصابك لما بتكون متنرفز؟","إيه الكتاب أو الفيديو اللي غير طريقة تفكيرك؟","لو ليك تسأل نفسك بعد ٥ سنين سؤال واحد، هيكون إيه؟","إيه أكتر حاجة بتحبها في القاعدة دي؟","إيه أول فلوس اتقبضتها في حياتك؟ عملت بيها إيه؟","إيه الحاجة اللي كنت بتعملها وانت صغير وبتتمنى ترجع تعملها؟","إيه أكتر صفة بتحبها في صاحبك اللي جنبك؟","لو هتكتب رسالة لنفسك وانت في سنة أولى، هتقول إيه؟","إيه أحلى مفاجأة حصلتلك؟","إيه الحاجة اللي بتتمنى الناس تفهمها عنك؟","إيه أكتر أكلة بتحب تعملها أو تاكلها في القعدات؟","إيه اللحظة اللي حسيت فيها إنك كبرت فعلًا؟","لو عندك قوة خارقة واحدة، هتختار إيه؟","إيه الحاجة اللي لسه مخطط تعملها ومتحمس ليها؟","مين الشخص اللي بتحكيله كل حاجة من غير فلتر؟","إيه أكتر حاجة بتحبها في بلدك؟","إيه الذكرى اللي بتضحك عليها كل ما تفتكرها؟","لو هتعمل عادة جديدة من بكرة، هتكون إيه؟","إيه الحاجة اللي بتقولها لنفسك لما بتكون زعلان؟","إيه أكتر مكان بتحب تقعد فيه في القاهرة؟","إيه الدرس اللي اتعلمته بالطريقة الصعبة؟","لو حياتك كتاب، الفصل اللي احنا فيه اسمه إيه؟","إيه الحاجة البسيطة اللي بتسعدك؟","إيه اللي بتتمنى يفضل زي ما هو في حياتك؟"]}],"punishments":["قلد صوت حيوان لمدة ٣٠ ثانية والكل يخمنه.","اتصل بحد من أهلك وقوله جملة غريبة من غير ما تفسر.","اعمل ٥ ضغطات دلوقتي.","اتكلم بلكنة أجنبية لمدة دقيقتين.","غني مقطع من أغنية اختارها الكل ليك.","خليك ساكت تمامًا لمدة دقيقتين، لو اتكلمت يتجدد العقاب.","قلد واحد من اللي قاعدين لحد ما الكل يعرف مين هو.","اشرب كوباية مياه كاملة على مرة واحدة.","احكي موقف محرج حصلك بصراحة كاملة.","اعمل رقصة من اختراعك لمدة ٣٠ ثانية.","قول الحقيقة عن أول انطباع خدته عن كل واحد قاعد.","اقعد على الأرض لمدة ٣ دوائر كاملة.","اتكلم من غير ما تستخدم كلمة \"مش\" لمدة ٣ دقايق.","اعمل إعلان عن نفسك كأنك منتج في التلفزيون.","خليهم يختاروا ليك إيفيه تمثله لمدة دقيقة.","احكي أول كدبة فاكر إنك قلتها في حياتك.","امشي ١٠ خطوات ورا و١٠ قدام وانت بتعمل حركات مضحكة.","قول \"أنا حلو\" ١٠ مرات بصوت عالي وبجدية.","اعمل بورتريه سريع لأقرب واحد ليك.","كل معلقة سكر (لو متاحة) أو اشرب مياه بلمون لو موجود.","اتكلم بصوت عالي جدًا لمدة ٣٠ ثانية عن أي موضوع.","قلد مذيع رياضة وهو بيعلق على القاعدة دي.","خليهم يغيروا صورة البروفايل بتاعتك لمدة ساعة (لو متفقين).","احكي أسوأ نكتة تعرفها واسكت استنى رد الفعل.","اعمل ١٠ قفزات في المكان وانت بتقول اسمك.","اتكلم عن نفسك بصيغة الغائب لمدة دقيقتين.","قلد طفل صغير بيعيط عشان عايز لعبة.","ارسم على ورقة صورة للقاعدة في دقيقة ووريها للكل.","اختار واحد يعملك تسريحة شعر جديدة بإيده (من غير مقص طبعًا).","قول أبجدية مقلوبة من آخرها لأولها، غلطت تعيد.","اعمل نفسك بتتكلم في التليفون في مكالمة مهمة جدًا والكل يسمعك.","غني أغنية من زمن أهلك.","قلد حركات واحد كبير في السن وهو بيلعب كورة.","احكي قصة في دقيقة لازم تبدأ بـ\"في مرة كنت بمشي في الشارع...\".","خليهم يسألوك سؤال واحد جريء وتجاوب بصراحة كاملة.","اعمل وقفة إعلان موبايلات لمدة ٣٠ ثانية.","اتكلم بسرعة جدًا لمدة ٣٠ ثانية من غير ما توقف.","قلد واحد بيعمل وقفة في السوشيال ميديا.","امثّل إنك بتبيع حاجة للقاعدة لازم يشتروها.","قول لكل واحد في القاعدة حاجة حلوة فيه من قلبك."],"punishmentLabel":"عقاب"}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('gamedata').textContent);
+const categories = DATA.categories;
+const punishments = DATA.punishments;
+const PUNISH = 'punish';
+const TIMER_SECONDS = 60;
+const arNum = n => n.toLocaleString('ar-EG');
+
+function shuffled(a) {
+  a = [...a];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+}
+function save(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+
+let customs = load('qa3da-customs', []);
+let decks = load('qa3da-decks', {});
+let players = load('qa3da-players', []);
+let turnIdx = load('qa3da-turn', 0);
+let selected = 'garee2a';
+let addCat = 'garee2a';
+let current = null;
+let deadline = null;
+let confirmReset = false;
+
+const $ = id => document.getElementById(id);
+
+function allKeys(cat) {
+  let base;
+  if (cat === PUNISH) base = punishments.map((t, i) => ({ key: `b-punish-${i}`, text: t }));
+  else base = categories.find(c => c.id === cat).cards.map((t, i) => ({ key: `b-${cat}-${i}`, text: t }));
+  return base.concat(customs.filter(c => c.cat === cat).map(c => ({ key: `c-${c.id}`, text: c.text })));
+}
+const catLabel = id => id === PUNISH ? 'عقاب' : categories.find(c => c.id === id).label;
+const catEmoji = id => id === PUNISH ? '😈' : categories.find(c => c.id === id).emoji;
+const currentPlayer = () => players.length ? players[turnIdx % players.length] : null;
+
+function updateCounts() {
+  const q = categories.reduce((n, c) => n + c.cards.length, 0) + customs.filter(c => c.cat !== PUNISH).length;
+  const p = punishments.length + customs.filter(c => c.cat === PUNISH).length;
+  $('counts').textContent = `${arNum(q)} سؤال وتحدي + ${arNum(p)} عقاب`;
+}
+
+function renderCategories() {
+  $('catRow').innerHTML = '';
+  for (const c of categories) {
+    const b = document.createElement('button');
+    b.textContent = `${c.emoji} ${c.label}`;
+    if (c.id === selected) b.classList.add('selected');
+    b.onclick = () => { selected = c.id; renderCategories(); draw(c.id); };
+    $('catRow').appendChild(b);
+  }
+  $('addCatRow').innerHTML = '';
+  for (const c of [...categories, { id: PUNISH, emoji: '😈', label: 'عقوبات' }]) {
+    const b = document.createElement('button');
+    b.textContent = `${c.emoji} ${c.label}`;
+    if (c.id === addCat) b.classList.add('selected');
+    b.onclick = () => { addCat = c.id; renderCategories(); };
+    $('addCatRow').appendChild(b);
+  }
+}
+
+function renderPlayers() {
+  const ul = $('playersList');
+  ul.innerHTML = '';
+  const cp = currentPlayer();
+  const ranked = [...players].sort((a, b) => b.points - a.points);
+  ranked.forEach((p, i) => {
+    const li = document.createElement('li');
+    if (cp && cp.id === p.id) li.classList.add('current');
+    const rank = document.createElement('span');
+    rank.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${arNum(i + 1)}.`;
+    const name = document.createElement('span');
+    name.className = 'li-text';
+    name.textContent = p.name + (cp && cp.id === p.id ? ' — الدور عليه' : '');
+    const pts = document.createElement('span');
+    pts.className = 'li-points';
+    pts.textContent = `${arNum(p.points)} نقطة`;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'امسح';
+    del.onclick = () => removePlayer(p.id);
+    li.append(rank, name, pts, del);
+    ul.appendChild(li);
+  });
+  $('resetRow').style.display = players.length ? 'flex' : 'none';
+  if (cp) {
+    $('turnLine').style.display = 'block';
+    $('turnLine').innerHTML = `الدور على: <strong></strong>`;
+    $('turnLine').querySelector('strong').textContent = cp.name;
+  } else {
+    $('turnLine').style.display = 'none';
+  }
+}
+
+function renderRemaining() {
+  const total = allKeys(selected).length;
+  const rem = decks[selected] === undefined ? total : decks[selected].filter(k => allKeys(selected).some(x => x.key === k)).length;
+  $('remainingLine').textContent = `باقي ${arNum(rem)} كارت من ${arNum(total)} في قسم «${catLabel(selected)}». الكروت مبتتكررش لحد ما القسم يخلص كله، وبعدين بترجع تتخلط من الأول. كل كارت ليه دقيقة إجابة.`;
+}
+
+function renderCard() {
+  const card = $('gameCard');
+  card.classList.toggle('punish', current && current.cat === PUNISH);
+  if (current) {
+    $('cardCat').textContent = `${catEmoji(current.cat)} ${catLabel(current.cat)}`;
+    $('cardText').textContent = current.text;
+    $('cardText').classList.remove('empty');
+    $('cardNote').textContent = current.reshuffled ? 'الكروت خلصت واتخلطت من الأول 🔀' : '';
+  } else {
+    $('cardCat').textContent = `${catEmoji(selected)} ${catLabel(selected)}`;
+    $('cardText').textContent = 'دوس «كارت جديد» وابدأ 👇';
+    $('cardText').classList.add('empty');
+    $('cardNote').textContent = '';
+  }
+  const cp = currentPlayer();
+  const showAnswers = current && cp && current.cat !== PUNISH;
+  $('answerRow').style.display = showAnswers ? 'flex' : 'none';
+  if (showAnswers) $('answeredBtn').textContent = `✅ ${cp.name} جاوب (+١)`;
+  const showPunishNote = current && current.cat === PUNISH && cp;
+  $('punishNote').style.display = showPunishNote ? 'block' : 'none';
+  if (showPunishNote) $('punishNote').textContent = `العقاب ده على ${cp.name}. نفذه، وبعدين اسحب كارت جديد وينتقل الدور للي بعده.`;
+  $('newCardBtn').textContent = players.length ? '🎴 كارت جديد (الدور للي بعده)' : '🎴 كارت جديد';
+  $('punishBtn').style.display = (!cp || !current) ? '' : 'none';
+}
+
+function draw(cat) {
+  const keys = allKeys(cat);
+  const hadDeck = decks[cat] !== undefined;
+  let remaining = (decks[cat] || []).filter(k => keys.some(x => x.key === k));
+  let reshuffled = false;
+  if (remaining.length === 0) {
+    remaining = shuffled(keys.map(x => x.key));
+    reshuffled = hadDeck;
+  }
+  const pick = Math.floor(Math.random() * remaining.length);
+  const key = remaining[pick];
+  decks[cat] = remaining.filter((_, i) => i !== pick);
+  save('qa3da-decks', decks);
+  const card = keys.find(x => x.key === key);
+  current = { cat, key, text: card.text, reshuffled };
+  deadline = Date.now() + TIMER_SECONDS * 1000;
+  renderCard();
+  renderRemaining();
+}
+
+function nextCard() {
+  if (players.length && current) { turnIdx++; save('qa3da-turn', turnIdx); renderPlayers(); }
+  draw(selected);
+}
+
+function answered() {
+  const cp = currentPlayer();
+  if (!cp) return;
+  players = players.map((p, i) => i === turnIdx % players.length ? { ...p, points: p.points + 1 } : p);
+  turnIdx++;
+  save('qa3da-players', players);
+  save('qa3da-turn', turnIdx);
+  renderPlayers();
+  draw(selected);
+}
+
+function addPlayer() {
+  const name = $('playerName').value.trim();
+  if (!name) return;
+  players.push({ id: `${Date.now()}-${Math.floor(Math.random() * 100000)}`, name, points: 0 });
+  save('qa3da-players', players);
+  $('playerName').value = '';
+  renderPlayers();
+  renderCard();
+}
+
+function removePlayer(id) {
+  const idx = players.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  players = players.filter(p => p.id !== id);
+  if (players.length === 0) turnIdx = 0;
+  else if (turnIdx % (players.length + 1) >= idx) turnIdx = Math.max(0, turnIdx - 1);
+  save('qa3da-players', players);
+  save('qa3da-turn', turnIdx);
+  renderPlayers();
+  renderCard();
+}
+
+function resetPoints() {
+  if (!confirmReset) {
+    confirmReset = true;
+    $('resetBtn').textContent = 'متأكد؟ دوس تاني للتصفير';
+    return;
+  }
+  players = players.map(p => ({ ...p, points: 0 }));
+  turnIdx = 0;
+  confirmReset = false;
+  $('resetBtn').textContent = '🧹 صفّر النقاط';
+  save('qa3da-players', players);
+  save('qa3da-turn', turnIdx);
+  renderPlayers();
+  renderCard();
+}
+
+function addCustom() {
+  const text = $('customText').value.trim();
+  if (!text) return;
+  const id = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  customs.push({ id, cat: addCat, text });
+  decks[addCat] = [...(decks[addCat] || []), `c-${id}`];
+  save('qa3da-customs', customs);
+  save('qa3da-decks', decks);
+  $('customText').value = '';
+  renderCustoms();
+  renderRemaining();
+  updateCounts();
+}
+
+function removeCustom(id) {
+  const card = customs.find(c => c.id === id);
+  if (!card) return;
+  customs = customs.filter(c => c.id !== id);
+  if (decks[card.cat]) decks[card.cat] = decks[card.cat].filter(k => k !== `c-${id}`);
+  save('qa3da-customs', customs);
+  save('qa3da-decks', decks);
+  if (current && current.key === `c-${id}`) { current = null; renderCard(); }
+  renderCustoms();
+  renderRemaining();
+  updateCounts();
+}
+
+function renderCustoms() {
+  const ul = $('customList');
+  ul.innerHTML = '';
+  for (const c of customs) {
+    const li = document.createElement('li');
+    const cat = document.createElement('span');
+    cat.className = 'li-cat';
+    cat.textContent = `${catEmoji(c.cat)} ${catLabel(c.cat)}`;
+    const txt = document.createElement('span');
+    txt.className = 'li-text';
+    txt.textContent = c.text;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'امسح';
+    del.onclick = () => removeCustom(c.id);
+    li.append(cat, txt, del);
+    ul.appendChild(li);
+  }
+}
+
+$('addPlayerBtn').onclick = addPlayer;
+$('playerName').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayer(); });
+$('customText').addEventListener('keydown', e => { if (e.key === 'Enter') addCustom(); });
+$('addCustomBtn').onclick = addCustom;
+$('resetBtn').onclick = resetPoints;
+$('newCardBtn').onclick = nextCard;
+$('punishBtn').onclick = () => draw(PUNISH);
+$('answeredBtn').onclick = answered;
+$('refusedBtn').onclick = () => draw(PUNISH);
+
+setInterval(() => {
+  if (deadline === null || !current) return;
+  const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+  let t = document.querySelector('.timer');
+  if (!t) {
+    t = document.createElement('div');
+    t.className = 'timer';
+    $('gameCard').prepend(t);
+  }
+  t.textContent = left > 0 ? `⏱️ ${arNum(left)}` : '⏰ خلص الوقت!';
+  t.classList.toggle('low', left <= 10);
+}, 500);
+
+updateCounts();
+renderCategories();
+renderPlayers();
+renderCustoms();
+renderCard();
+renderRemaining();
+</script>
+</body>
+</html>
