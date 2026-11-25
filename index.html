@@ -766,6 +766,12 @@ setInterval(() => {
 let room = null;
 let lastSync = '';
 const ROOM_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const PEER_CONFIG = { config: { iceServers: [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+] } };
 
 function makeRoomCode() {
   let c = '';
@@ -778,7 +784,7 @@ function hostRoom(tries) {
   if (typeof Peer === 'undefined') { $('onlineNote').textContent = 'الأونلاين محتاج إنترنت. وصل النت وجرب تاني.'; return; }
   const code = makeRoomCode();
   let peer;
-  try { peer = new Peer('s60-' + code); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
+  try { peer = new Peer('s60-' + code, PEER_CONFIG); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
   room = { role: 'host', code, peer, conns: [], name: onlineName() };
   lastSync = '';
   peer.on('open', () => { renderRoomPanel(); $('onlineNote').textContent = ''; });
@@ -893,8 +899,11 @@ function joinRoom() {
   if (typeof Peer === 'undefined') { $('onlineNote').textContent = 'الأونلاين محتاج إنترنت. وصل النت وجرب تاني.'; return; }
   $('onlineNote').textContent = 'بدخول الأوضة...';
   let peer;
-  try { peer = new Peer(); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
-  room = { role: 'join', code, peer, conn: null, name: onlineName(), youId: null, state: null, roomDeadline: null, answeredKey: null };
+  try { peer = new Peer(PEER_CONFIG); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
+  room = { role: 'join', code, peer, conn: null, name: onlineName(), youId: null, state: null, roomDeadline: null, answeredKey: null, entered: false };
+  setTimeout(() => {
+    if (room && room.role === 'join' && !room.entered) $('onlineNote').textContent = 'الاتصال بطيء أو الشبكة حاجبته. لو فضل كده، جرب شبكة تانية (واي فاي/باقة) عندك وعند صاحبك.';
+  }, 15000);
   peer.on('error', e => {
     if (e.type === 'peer-unavailable') $('onlineNote').textContent = 'مفيش أوضة بالكود ده. اتأكد من الكود وجرب تاني.';
     else $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.';
@@ -920,6 +929,7 @@ function joinRoom() {
 }
 
 function enterRoomView() {
+  room.entered = true;
   $('roomView').style.display = 'flex';
   $('roomViewTitle').textContent = `أوضة ${room.code} 🌐`;
 }
