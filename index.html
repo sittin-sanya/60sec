@@ -134,6 +134,9 @@ gap: 10px;
 .qa-chip { display: none; width: 100%; box-sizing: border-box; margin: 12px auto 0; background: #f4f4f1; color: #6b6b66; border: 2px dashed #b9b9b2; border-radius: 14px; padding: 14px 16px; min-height: 56px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; text-align: center; }
 .qa-chip.revealed { background: #e8f3ea; color: #1d6b34; border: 2px solid #7dbf8e; font-size: 20px; cursor: default; }
 .qa-chip.locked { cursor: default; }
+.typed { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: #fff7e0; border: 1px solid #f0d98a; font-weight: 700; font-size: 17px; text-align: center; display: none; }
+.ans-in { display: none; gap: 8px; margin-top: 10px; }
+.ans-in input { flex: 1; min-width: 0; padding: 12px; border: 1px solid #ccc; border-radius: 12px; font-size: 16px; font-family: inherit; }
 button:disabled { opacity: .4; cursor: not-allowed; }
 body[data-theme="night"] .qa-chip { background: #2a2a2a; color: #bbb; border-color: #555; }
 body[data-theme="night"] .qa-chip.revealed { background: #1f3a28; color: #8fe3a6; border-color: #2f5a3d; }
@@ -237,6 +240,8 @@ footer { text-align: center; color: var(--ink2); font-size: 12px; padding: 16px 
 <button class="qa-chip" id="qaChip" style="display:none"></button>
 <div class="card-note" id="cardNote"></div>
 </div>
+<div class="typed" id="typedBox"></div>
+<div class="ans-in" id="ansInputRow"><input id="ansInput" maxlength="80" placeholder="اكتب إجابتك هنا"><button class="primary" id="ansSendBtn">ابعت ✍️</button></div>
 <div class="vote-box" id="voteBox" style="display:none"></div>
 <div class="row" id="answerRow" style="display:none">
 <button class="primary" id="answeredBtn"></button>
@@ -282,6 +287,8 @@ footer { text-align: center; color: var(--ink2); font-size: 12px; padding: 16px 
 <button class="qa-chip" id="roomQaChip" style="display:none"></button>
 <div class="card-note" id="roomCardNote"></div>
 </div>
+<div class="typed" id="roomTyped"></div>
+<div class="ans-in" id="roomAnsInputRow"><input id="roomAnsInput" maxlength="80" placeholder="اكتب إجابتك هنا"><button class="primary" id="roomAnsSendBtn">ابعت ✍️</button></div>
 <div class="row" id="roomAnswerRow" style="display:none">
 <button class="primary" id="roomAnsweredBtn">✅ أنا جاوبت (+١)</button>
 <button id="roomRefusedBtn">مجاوبتش؟ يبقى عقاب 😈</button>
@@ -663,8 +670,8 @@ if (current) {
 $('cardCat').textContent = `${catEmoji(current.cat)} ${catLabel(current.cat)}`;
 const cp0 = currentPlayer();
 const roomOn = !!(room && room.role === 'host' && room.conns.length);
-const selfTurn = !!(roomOn && cp0 && !cp0.remote && isTrivia(current.cat));
-const auto = !!(roomOn && cp0 && cp0.remote);
+const selfTurn = !!(roomOn && cp0 && !cp0.remote && isTrivia(current.cat) && !current.typed);
+const auto = !!(roomOn && cp0 && (cp0.remote || current.typed));
 $('cardText').textContent = setQA('qaChip', current.text, auto, selfTurn ? '🔒 الإجابة مخفية عنك. صحابك هيحكموا على إجابتك' : null, gateTrivia);
 $('cardText').classList.remove('empty');
 $('cardNote').textContent = current.reshuffled ? 'الكروت خلصت واتخلطت من الأول 🔀' : '';
@@ -691,6 +698,14 @@ $('punishBtn').style.display = (!cp || !current) ? '' : 'none';
 const selfTurn2 = !!(triv && room && room.role === 'host' && room.conns.length && cp && !cp.remote);
 $('triviaRow').style.display = (triv && !selfTurn2) ? 'flex' : 'none';
 gateTrivia();
+{
+const showT = !!(triv && current.typed && cp);
+$('typedBox').style.display = showT ? 'block' : 'none';
+if (showT) $('typedBox').textContent = `✍️ إجابة ${cp.name}: ${current.typed}`;
+const need = !!(selfTurn2 && !current.typed);
+$('ansInputRow').style.display = need ? 'flex' : 'none';
+if (!need) $('ansInput').value = '';
+}
 $('drawRow').style.display = (triv && !selfTurn2) ? 'none' : 'flex';
 if (triv) $('triviaRightBtn').textContent = cp ? `✅ ${cp.name} جاوب صح (+١)` : '✅ صح';
 if (triv) $('triviaWrongBtn').textContent = cp ? `❌ ${cp.name} غلط` : '❌ غلط';
@@ -864,6 +879,8 @@ $('punishBtn').onclick = () => draw(PUNISH);
 $('answeredBtn').onclick = answered;
 $('refusedBtn').onclick = refuse;
 $('triviaRightBtn').onclick = triviaRight;
+$('ansSendBtn').onclick = () => { const v = $('ansInput').value.trim(); if (!v || !current) return; current.typed = v.slice(0, 80); renderCard(); };
+$('roomAnsSendBtn').onclick = () => { const v = $('roomAnsInput').value.trim(); if (!v || !room || room.role !== 'join' || !room.conn || !room.state || !room.state.current) return; try { room.conn.send({ t: 'ans', key: room.state.current.key, text: v.slice(0, 80) }); room.state.current.typed = v.slice(0, 80); renderRoomView(); } catch (e) {} };
 $('triviaWrongBtn').onclick = triviaWrong;
 $('muteBtn').onclick = () => { muted = !muted; save('qa3da-muted', muted); renderMute(); };
 $('shareBtn').onclick = shareGame;
@@ -874,7 +891,7 @@ $('closeEndBtn').onclick = hideEndScreen;
 setInterval(() => {
 if (deadline === null || !current) return;
 const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-let t = document.querySelector('.timer');
+let t = $('gameCard').querySelector('.timer');
 if (!t) {
 t = document.createElement('div');
 t.className = 'timer';
@@ -1128,6 +1145,10 @@ const rc = room.conns.find(x => x.conn === conn);
 if (rc && vote && !vote.closed && d.key === vote.key && d.target !== rc.playerId && players.some(p => p.id === d.target)) { vote.votes[rc.playerId] = d.target; renderVote(); }
 } else if (d && d.t === 'answer') {
 hostAnswer(conn, !!d.ok);
+} else if (d && d.t === 'ans') {
+const rc2 = room.conns.find(x => x.conn === conn);
+const cp2 = currentPlayer();
+if (rc2 && cp2 && cp2.id === rc2.playerId && current && isTrivia(current.cat) && d.key === current.key && !current.typed) { current.typed = String(d.text || '').slice(0, 80); renderCard(); }
 } else if (d && d.t === 'judge') {
 hostJudge(conn, !!d.ok, d.key);
 }
@@ -1158,7 +1179,7 @@ if (ok) answered(); else refuse();
 }
 
 function stateFor(s, rc) {
-if (!s.current || !isTrivia(s.current.cat) || String(s.current.text).indexOf('||') < 0) return s;
+if (!s.current || !isTrivia(s.current.cat) || String(s.current.text).indexOf('||') < 0 || s.current.typed) return s;
 const cp = s.players.length ? s.players[s.turnIdx % s.players.length] : null;
 if (!cp || cp.id !== rc.playerId) return s;
 return { ...s, current: { ...s.current, text: String(s.current.text).split('||')[0], orig: '' } };
@@ -1310,7 +1331,7 @@ $('roomCard').classList.toggle('punish', s.current.cat === PUNISH);
 $('roomCardCat').textContent = `${catEmoji(s.current.cat)} ${catLabel(s.current.cat)}`;
 const jTriv = isTrivia(s.current.cat);
 const jHas = String(s.current.text).indexOf('||') >= 0;
-$('roomCardText').textContent = setQA('roomQaChip', s.current.text, jTriv && !mine, (jTriv && mine) ? '🔒 الإجابة مخفية عنك. صحابك هيحكموا على إجابتك' : null);
+$('roomCardText').textContent = setQA('roomQaChip', s.current.text, jTriv && (!mine || !!s.current.typed), (jTriv && mine) ? '🔒 الإجابة مخفية عنك. صحابك هيحكموا على إجابتك' : null);
 $('roomCardText').classList.remove('empty');
 $('roomCardNote').textContent = s.current.reshuffled ? 'الكروت خلصت واتخلطت من الأول 🔀' : '';
 $('roomNoword').style.display = s.current.forbid ? 'inline-block' : 'none';
@@ -1325,6 +1346,14 @@ $('roomCardNote').textContent = '';
 $('roomNoword').style.display = 'none';
 }
 const rTriv = !!(s.current && isTrivia(s.current.cat));
+{
+const typed = rTriv && s.current.typed;
+$('roomTyped').style.display = typed ? 'block' : 'none';
+if (typed && cp) $('roomTyped').textContent = `✍️ إجابة ${cp.name}: ${s.current.typed}`;
+const need = !!(rTriv && mine && !typed);
+$('roomAnsInputRow').style.display = need ? 'flex' : 'none';
+if (!need) $('roomAnsInput').value = '';
+}
 const canAnswer = rTriv ? !!(!mine && cp && s.current.text.indexOf('||') >= 0 && room.answeredKey !== s.current.key) : !!(mine && s.current && s.current.cat !== PUNISH && room.answeredKey !== s.current.key);
 $('roomAnswerRow').style.display = canAnswer ? 'flex' : 'none';
 $('roomAnsweredBtn').textContent = rTriv ? `✅ إجابة ${cp ? cp.name : ''} صح (+١)` : '✅ أنا جاوبت (+١)';
