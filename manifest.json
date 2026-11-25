@@ -1,0 +1,16 @@
+{
+  "name": "٦٠ ثانية — لعبة كروت القاعدة",
+  "short_name": "٦٠ ثانية",
+  "description": "لعبة كروت تفتح مواضيع مع الصحاب في القاعدة: أسئلة جريئة، مين فينا، تحديات، لو خيروك، حقيقة ولا جرأة، وعقوبات.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4efec",
+  "theme_color": "#4f7d70",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
