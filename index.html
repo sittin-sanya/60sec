@@ -22,7 +22,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="٦٠ ثانية">
-<meta name="app-build" content="20261125-2">
+<meta name="app-build" content="20261125-3">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
@@ -1121,6 +1121,16 @@ return c;
 }
 function onlineName() { const n = $('onlineName').value.trim(); return n || 'لاعب'; }
 
+function reviveHost(peer) {
+if (!room || room.peer !== peer || peer.destroyed || !peer.disconnected) return;
+try { peer.reconnect(); } catch (e) {}
+setTimeout(() => reviveHost(peer), 3000);
+}
+function reviveRoom() { if (room && room.role === 'host' && room.peer) reviveHost(room.peer); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reviveRoom(); });
+window.addEventListener('online', reviveRoom);
+window.addEventListener('focus', reviveRoom);
+setInterval(reviveRoom, 8000);
 function hostRoom(tries) {
 if (typeof Peer === 'undefined') { $('onlineNote').textContent = 'الأونلاين محتاج إنترنت. وصل النت وجرب تاني.'; return; }
 const code = makeRoomCode();
@@ -1128,8 +1138,10 @@ let peer;
 try { peer = new Peer('s60-' + code, PEER_CONFIG); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
 room = { role: 'host', code, peer, conns: [], name: onlineName() };
 lastSync = '';
-peer.on('open', () => { renderRoomPanel(); $('onlineNote').textContent = ''; gcEvent('room/created', 'room created'); });
+peer.on('open', () => { renderRoomPanel(); $('onlineNote').textContent = (room && room.opened) ? '' : 'ابعت الكود لصحابك وسيب اللعبة مفتوحة قدامك لحد ما يدخلوا. لو قفلتها أو خرجت منها الأوضة بتتقفل.'; if (room && room.peer === peer && !room.opened) { room.opened = true; gcEvent('room/created', 'room created'); } });
+peer.on('disconnected', () => reviveHost(peer));
 peer.on('error', e => {
+if (e.type !== 'unavailable-id' && room && room.peer === peer && room.opened) { reviveHost(peer); return; }
 if (e.type === 'unavailable-id' && (tries || 0) < 5) { try { peer.destroy(); } catch (x) {} if (room && room.peer === peer) room = null; hostRoom((tries || 0) + 1); return; }
 $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.';
 });
@@ -1277,7 +1289,8 @@ if (room === mine && !mine.entered) fail('الاتصال مش راضي يتم. �
 }, 15000);
 peer.on('error', e => {
 if (room !== mine) return;
-if (e.type === 'peer-unavailable') fail('مفيش أوضة بالكود ده. اتأكد من الكود وإن صاحبك لسه فاتح الأوضة.');
+if (e.type === 'peer-unavailable' && (mine.tries || 0) < 4 && !mine.entered) { mine.tries = (mine.tries || 0) + 1; $('onlineNote').textContent = 'بدور على الأوضة...'; setTimeout(() => { if (room === mine && !mine.entered && !peer.destroyed) { const c2 = peer.connect('s60-' + code, { reliable: true }); mine.conn = c2; wire(c2); } }, 3500); return; }
+if (e.type === 'peer-unavailable') fail('مفيش أوضة بالكود ده. اتأكد من الكود، وإن صاحبك فاتح اللعبة قدامه (لو خرج منها الأوضة بتتقفل) وجرب تاني.');
 else if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error' || e.type === 'socket-closed') fail('مش قادر أوصل لسيرفر الربط. اتأكد من النت وجرب تاني.');
 else fail('حصلت مشكلة في الاتصال (' + e.type + ')، جرب تاني.');
 });
