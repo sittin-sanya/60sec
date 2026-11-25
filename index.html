@@ -730,6 +730,7 @@ const forbid = forbidRaw ? nativeNoword(forbidRaw) : null;
 const isCustom = String(key).startsWith('c-');
 current = { cat, key, text: isCustom ? card.text : nativeText(cat, key, card.text), orig: card.text, reshuffled, forbid };
 drawnCount++;
+gcEvent('card/' + cat, 'card ' + cat);
 vote = cat === 'meenfeena' ? { key, votes: {}, closed: false } : null;
 deadline = Date.now() + TIMER_SECONDS * 1000;
 lastLeft = null;
@@ -748,6 +749,7 @@ save('qa3da-players', players);
 draw(PUNISH);
 }
 function triviaWrong() {
+gcEvent('trivia/wrong', 'trivia wrong');
 const cp = currentPlayer();
 if (cp) {
 players = players.map((p, i) => i === turnIdx % players.length ? { ...p, wrong: (p.wrong || 0) + 1 } : p);
@@ -760,6 +762,7 @@ sfx('punish');
 draw(selected, null);
 }
 function triviaRight() {
+gcEvent('trivia/right', 'trivia right');
 if (currentPlayer()) answered(); else draw(selected);
 }
 function nextCard() {
@@ -1118,7 +1121,7 @@ let peer;
 try { peer = new Peer('s60-' + code, PEER_CONFIG); } catch (e) { $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.'; return; }
 room = { role: 'host', code, peer, conns: [], name: onlineName() };
 lastSync = '';
-peer.on('open', () => { renderRoomPanel(); $('onlineNote').textContent = ''; });
+peer.on('open', () => { renderRoomPanel(); $('onlineNote').textContent = ''; gcEvent('room/created', 'room created'); });
 peer.on('error', e => {
 if (e.type === 'unavailable-id' && (tries || 0) < 5) { try { peer.destroy(); } catch (x) {} if (room && room.peer === peer) room = null; hostRoom((tries || 0) + 1); return; }
 $('onlineNote').textContent = 'حصلت مشكلة في الاتصال، جرب تاني.';
@@ -1132,6 +1135,7 @@ let nm = String(d.name || 'لاعب').slice(0, 20);
 if (players.some(p => p.name === nm)) nm += ' ٢';
 const t1 = players.filter(p => p.team === 1).length;
 const t2 = players.filter(p => p.team === 2).length;
+gcEvent('room/player-joined', 'player joined room');
 const pl = { id: 'r-' + conn.peer, name: nm, points: 0, team: playMode === 'teams' ? (t1 <= t2 ? 1 : 2) : 0, remote: true };
 players.push(pl);
 save('qa3da-players', players);
@@ -1257,7 +1261,7 @@ if (!/^[A-Z2-9]{4}$/.test(code)) { $('onlineNote').textContent = 'اكتب كو�
 if (typeof Peer === 'undefined') { $('onlineNote').textContent = 'الأونلاين محتاج إنترنت. وصل النت وجرب تاني.'; return; }
 $('onlineNote').textContent = 'بدخول الأوضة...';
 let peer;
-const fail = m => { $('onlineNote').textContent = m; };
+const fail = m => { $('onlineNote').textContent = m; gcEvent('room/join-fail', 'room join failed'); };
 try { peer = new Peer(PEER_CONFIG); } catch (e) { fail('حصلت مشكلة في الاتصال، جرب تاني.'); return; }
 room = { role: 'join', code, peer, conn: null, name: onlineName(), youId: null, state: null, roomDeadline: null, answeredKey: null, entered: false };
 const mine = room;
@@ -1279,7 +1283,7 @@ conn.on('error', () => { if (room === mine && !mine.entered) fail('فشل الا
 wire(conn);
 });
 function wire(conn) {
-conn.on('open', () => { clearTimeout(tmo); try { conn.send({ t: 'join', name: room.name }); } catch (e) {} });
+conn.on('open', () => { clearTimeout(tmo); gcEvent('room/join-ok', 'room joined'); try { conn.send({ t: 'join', name: room.name }); } catch (e) {} });
 conn.on('data', d => {
 if (!room || room.role !== 'join') return;
 if (d && d.t === 'state') {
