@@ -662,6 +662,8 @@ chip.onclick = show;
 return q;
 }
 const isTrivia = c => c === 'kora' || c === 'maalomat';
+const ANS_CATS = ['garee2a', 'ta3arof', 'lawkhayyarok', 'ha2i2a', 'mat2awegeen', 'shoghl', 'ayla'];
+const isAnsCat = c => isTrivia(c) || ANS_CATS.indexOf(c) >= 0;
 function gateTrivia() { const ok = $('qaChip').dataset.rev === '1' || $('qaChip').style.display === 'none'; $('triviaRightBtn').disabled = !ok; $('triviaWrongBtn').disabled = !ok; }
 function renderCard() {
 const card = $('gameCard');
@@ -699,12 +701,14 @@ const selfTurn2 = !!(triv && room && room.role === 'host' && room.conns.length &
 $('triviaRow').style.display = (triv && !selfTurn2) ? 'flex' : 'none';
 gateTrivia();
 {
-const showT = !!(triv && current.typed && cp);
+const ansC = !!(current && isAnsCat(current.cat));
+const roomOn2 = !!(room && room.role === 'host' && room.conns.length);
+const showT = !!(ansC && current.typed);
 $('typedBox').style.display = showT ? 'block' : 'none';
-if (showT) $('typedBox').textContent = `✍️ إجابة ${cp.name}: ${current.typed}`;
-const need = !!(selfTurn2 && !current.typed);
+if (showT) $('typedBox').textContent = `✍️ ${cp ? 'إجابة ' + cp.name : 'الإجابة'}: ${current.typed}`;
+const need = !!(ansC && !current.typed && (triv ? selfTurn2 : !(roomOn2 && cp && cp.remote)));
 $('ansInputRow').style.display = need ? 'flex' : 'none';
-if (!need) $('ansInput').value = '';
+if (!need || (current && $('ansInput').dataset.k !== String(current.key))) { $('ansInput').value = ''; $('ansInput').dataset.k = current ? String(current.key) : ''; }
 }
 $('drawRow').style.display = (triv && !selfTurn2) ? 'none' : 'flex';
 if (triv) $('triviaRightBtn').textContent = cp ? `✅ ${cp.name} جاوب صح (+١)` : '✅ صح';
@@ -1152,7 +1156,7 @@ hostAnswer(conn, !!d.ok);
 } else if (d && d.t === 'ans') {
 const rc2 = room.conns.find(x => x.conn === conn);
 const cp2 = currentPlayer();
-if (rc2 && cp2 && cp2.id === rc2.playerId && current && isTrivia(current.cat) && d.key === current.key && !current.typed) { current.typed = String(d.text || '').slice(0, 80); renderCard(); }
+if (rc2 && cp2 && cp2.id === rc2.playerId && current && isAnsCat(current.cat) && d.key === current.key && !current.typed) { current.typed = String(d.text || '').slice(0, 80); renderCard(); }
 } else if (d && d.t === 'judge') {
 hostJudge(conn, !!d.ok, d.key);
 }
@@ -1351,12 +1355,13 @@ $('roomNoword').style.display = 'none';
 }
 const rTriv = !!(s.current && isTrivia(s.current.cat));
 {
-const typed = rTriv && s.current.typed;
+const rAns = !!(s.current && isAnsCat(s.current.cat));
+const typed = rAns && s.current.typed;
 $('roomTyped').style.display = typed ? 'block' : 'none';
 if (typed && cp) $('roomTyped').textContent = `✍️ إجابة ${cp.name}: ${s.current.typed}`;
-const need = !!(rTriv && mine && !typed);
+const need = !!(rAns && mine && !typed);
 $('roomAnsInputRow').style.display = need ? 'flex' : 'none';
-if (!need) $('roomAnsInput').value = '';
+if (!need || $('roomAnsInput').dataset.k !== String(s.current && s.current.key)) { $('roomAnsInput').value = ''; $('roomAnsInput').dataset.k = String(s.current && s.current.key); }
 }
 const canAnswer = rTriv ? !!(!mine && cp && s.current.text.indexOf('||') >= 0 && room.answeredKey !== s.current.key) : !!(mine && s.current && s.current.cat !== PUNISH && room.answeredKey !== s.current.key);
 $('roomAnswerRow').style.display = canAnswer ? 'flex' : 'none';
