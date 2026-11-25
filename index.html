@@ -22,7 +22,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="٦٠ ثانية">
-<meta name="app-build" content="20261125-3">
+<meta name="app-build" content="20261125-4">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
@@ -707,8 +707,10 @@ gateTrivia();
 const ansC = !!(current && isAnsCat(current.cat));
 const roomOn2 = !!(room && room.role === 'host' && room.conns.length);
 const showT = !!(ansC && current.typed);
-$('typedBox').style.display = showT ? 'block' : 'none';
+const showL = !showT && !!(lastAns && room && room.role === 'host' && room.conns.length);
+$('typedBox').style.display = (showT || showL) ? 'block' : 'none';
 if (showT) $('typedBox').textContent = `✍️ ${cp ? 'إجابة ' + cp.name : 'الإجابة'}: ${current.typed}`;
+else if (showL) $('typedBox').textContent = `📝 إجابة ${lastAns.name} في الكارت اللي فات: ${lastAns.text}`;
 const need = !!(ansC && !current.typed && (triv ? selfTurn2 : !(roomOn2 && cp && cp.remote)));
 $('ansInputRow').style.display = need ? 'flex' : 'none';
 if (!need || (current && $('ansInput').dataset.k !== String(current.key))) { $('ansInput').value = ''; $('ansInput').dataset.k = current ? String(current.key) : ''; }
@@ -749,6 +751,7 @@ popCard();
 
 function refuse() {
 const cp = currentPlayer();
+takeLastAns(cp);
 if (cp) {
 players = players.map((p, i) => i === turnIdx % players.length ? { ...p, pun: (p.pun || 0) + 1 } : p);
 save('qa3da-players', players);
@@ -773,13 +776,20 @@ gcEvent('trivia/right', 'trivia right');
 if (currentPlayer()) answered(); else draw(selected);
 }
 function nextCard() {
+lastAns = null;
 if (players.length && current) { turnIdx++; save('qa3da-turn', turnIdx); renderPlayers(); }
 draw(selected);
 }
 
+function takeLastAns(cp) {
+if (current && isAnsCat(current.cat) && !current.typed && !isTrivia(current.cat)) { const v = ($('ansInput').value || '').trim(); if (v && !(room && room.role === 'host' && cp && cp.remote)) current.typed = v.slice(0, 80); }
+lastAns = (current && cp && current.typed && !isTrivia(current.cat)) ? { name: cp.name, text: current.typed } : null;
+}
+let lastAns = null;
 function answered() {
 const cp = currentPlayer();
 if (!cp) return;
+takeLastAns(cp);
 const wasWild = current && wildSet.has(current.orig || current.text);
 players = players.map((p, i) => i === turnIdx % players.length ? { ...p, points: p.points + 1, ans: (p.ans || 0) + 1, wild: (p.wild || 0) + (wasWild ? 1 : 0) } : p);
 turnIdx++;
@@ -1225,7 +1235,8 @@ selected,
 playMode,
 left: (deadline !== null && current) ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : null,
 end: $('endScreen').style.display !== 'none',
-vote: hostVoteState()
+vote: hostVoteState(),
+lastAns
 };
 }
 
@@ -1373,8 +1384,10 @@ const rTriv = !!(s.current && isTrivia(s.current.cat));
 {
 const rAns = !!(s.current && isAnsCat(s.current.cat));
 const typed = rAns && s.current.typed;
-$('roomTyped').style.display = typed ? 'block' : 'none';
+const lastA = !typed && s.lastAns;
+$('roomTyped').style.display = (typed || lastA) ? 'block' : 'none';
 if (typed && cp) $('roomTyped').textContent = `✍️ إجابة ${cp.name}: ${s.current.typed}`;
+else if (lastA) $('roomTyped').textContent = `📝 إجابة ${lastA.name} في الكارت اللي فات: ${lastA.text}`;
 const need = !!(rAns && mine && !typed);
 $('roomAnsInputRow').style.display = need ? 'flex' : 'none';
 if (!need || $('roomAnsInput').dataset.k !== String(s.current && s.current.key)) { $('roomAnsInput').value = ''; $('roomAnsInput').dataset.k = String(s.current && s.current.key); }
@@ -1440,6 +1453,7 @@ t.classList.toggle('low', left <= 10);
 function roomAnswer(ok) {
 if (!room || room.role !== 'join' || !room.conn || !room.state || !room.state.current) return;
 try {
+if (!isTrivia(room.state.current.cat) && isAnsCat(room.state.current.cat) && !room.state.current.typed) { const pv = ($('roomAnsInput').value || '').trim(); if (pv) room.conn.send({ t: 'ans', key: room.state.current.key, text: pv.slice(0, 80) }); }
 if (isTrivia(room.state.current.cat)) room.conn.send({ t: 'judge', ok, key: room.state.current.key }); else room.conn.send({ t: 'answer', ok });
 room.answeredKey = room.state.current.key;
 renderRoomView();
